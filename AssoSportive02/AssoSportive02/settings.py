@@ -35,6 +35,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # My apps
     'accueil',
+    
 
     # Base Django apps
     'django.contrib.admin',
@@ -44,6 +45,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+
+AUTH_USER_MODEL = "accueil.Utilisateur"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

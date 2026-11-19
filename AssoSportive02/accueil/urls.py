@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [
 
-    path("", views.accueil, name="accueil"),
+    path("", views.Accueil_view.as_view(), name="accueil"),
 
     path("connexion/", 
          auth_views.LoginView.as_view(
@@ -19,7 +19,7 @@ urlpatterns = [
          ),
 
     path("espace_membre/", 
-         views.Espace_membre,
+         views.Espace_membre_view.as_view(),
          name="Espace_membre"
          ),
 ]

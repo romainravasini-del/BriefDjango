@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Mon espace membre</h1>
+
+<p>
+    Bienvenue {{user}} 
+</p>
+
+<p>
+    Vous êtes connecté à votre espace membre.
+</p>
+
+<form method="post" action="{% url 'deconnexion' %}">
+    {% csrf_token %}
+    <button type="submit" class="hover:underline">Déconnexion</button>
+</form>
+
+{% endblock %}

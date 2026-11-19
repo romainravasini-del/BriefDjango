@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Bienvenue</h1>
+
+<p>
+    Découvre vos superbes activités
+</p>
+
+{% if user.is_authentificated %}
+
+<a href="{% url 'Espace_membre' %}"> Mon espace membre </a>
+
+{% else %}
+
+<a href="{% url 'connexion' %}"> Se connecter </a>
+
+{% endif %}
+
+{% endblock %}

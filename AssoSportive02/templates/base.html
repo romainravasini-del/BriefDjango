@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AssoSportive02{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+    <nav>
+        <ul class="flex items-center justify-between gap-6 bg-sky-400 text-white p-4 rounded-b-lg">
+            <li><a href="#">Activités</a></li>
+            <li><a href="#">Inscription aux séances</a></li>
+            <li><a href="#">Séances</a></li>
+            {% if user.is_authenticated %}
+            <li>
+                <form method="post" action="{% url 'deconnexion' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="hover:underline">Déconnexion</button>
+                </form>
+            </li>
+            {% else %}
+            <li><a href="#">Connexion</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+    <footer>
+        <p>AssoSportive02</p>
+    </footer>
+</body>
+
+</html>

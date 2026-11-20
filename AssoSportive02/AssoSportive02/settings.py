@@ -136,3 +136,4 @@ MAILERS = {
 
 LOGIN_URL = "connexion"
 LOGIN_REDIRECT_URL = "Espace_membre"
+LOGOUT_REDIRECT_URL = "connexion"

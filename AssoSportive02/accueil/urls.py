@@ -7,9 +7,7 @@ urlpatterns = [
     path("", views.Accueil_view.as_view(), name="accueil"),
 
     path("connexion/", 
-         auth_views.LoginView.as_view(
-            template_name="accueil/connexion.html"
-         ),
+         views.Connexion_view.as_view(),
          name="connexion"
          ),
 
@@ -22,4 +20,9 @@ urlpatterns = [
          views.Espace_membre_view.as_view(),
          name="Espace_membre"
          ),
+     
+     path("inscription/", 
+     views.Connexion_view.as_view(), 
+     name="inscription"),
+
 ]

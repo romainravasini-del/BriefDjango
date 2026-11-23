@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
 from .forms import Formulaire_inscription, Formulaire_connexion
-
+from .models import Seance, Inscription
 class Espace_membre_view(LoginRequiredMixin,TemplateView):
     template_name = "accueil/espace_membre.html"
 

@@ -9,7 +9,19 @@
         <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
             <p class="text-slate-500 text-center mt-2 mb-8">Bienvenue sur votre espace membre. Vous pouvez ici gérer vos
                 activités sportives et vos informations personnelles. </p>
-
+            {% if user.role == "gestionnaire" %}
+            <h2 class="text-2xl font-bold text-center mb-4">Espace Coach</h2>
+            <p class="text-slate-500 text-center mt-2 mb-4">Gérez vos adhérents et vos salles disponnibles</p>
+            <h3 class="font-bold mt-4">Liste des adhérents</h3>
+            <p>Faîtes l'appel de vos adhérents (présents/absents)</p>
+            {%else%}
+            <h2 class="text-2xl font-bold text-center mb-4">Espace Adhérent</h2>
+            <p class="text-center mb-4">Consultez vos cours et vos activités sportives</p>
+            <h3 class="font-bold mt-4">Séances disponnibles</h3>
+            <p>Consultez les séances proposées par les coaches.</p>
+            <h3 class="font-bold mt-4">Mes Inscriptions</h3>
+            <p>Gérez, annulez ou avertissez de vos absences.</p>
+            {%endif%}         
             <form method="post" action="{% url 'deconnexion' %}">
                 {% csrf_token %}
                 <button type="submit"

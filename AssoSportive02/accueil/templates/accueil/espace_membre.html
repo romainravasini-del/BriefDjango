@@ -1,20 +1,23 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 
-<h1>Mon espace membre</h1>
+<h1 class="text-5xl font-bold text-slate-800 text-center">Bienvenue à l'Association Multisports de l'Aisne</h1>
+<div class="max-w-3xl mx-auto py-10 px-6">
+    <p class="text-slate-500 text-center mt-2 mb-8">Bienvenue {{user}}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-20">
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
+            <p class="text-slate-500 text-center mt-2 mb-8">Bienvenue sur votre espace membre. Vous pouvez ici gérer vos
+                activités sportives et vos informations personnelles. </p>
 
-<p>
-    Bienvenue {{user}} 
-</p>
-
-<p>
-    Vous êtes connecté à votre espace membre.
-</p>
-
-<form method="post" action="{% url 'deconnexion' %}">
-    {% csrf_token %}
-    <button type="submit" class="hover:underline">Déconnexion</button>
-</form>
-
+            <form method="post" action="{% url 'deconnexion' %}">
+                {% csrf_token %}
+                <button type="submit"
+                    class="mt-4 w-full bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">Se
+                    déconnecter
+                </button>
+            </form>
+        </section>
+    </div>
+</div>
 {% endblock %}

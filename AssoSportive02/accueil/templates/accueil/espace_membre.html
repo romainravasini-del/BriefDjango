@@ -9,19 +9,58 @@
         <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2">
             <p class="text-slate-500 text-center mt-2 mb-8">Bienvenue sur votre espace membre. Vous pouvez ici gérer vos
                 activités sportives et vos informations personnelles. </p>
+
             {% if user.role == "gestionnaire" %}
+
             <h2 class="text-2xl font-bold text-center mb-4">Espace Coach</h2>
             <p class="text-slate-500 text-center mt-2 mb-4">Gérez vos adhérents et vos salles disponnibles</p>
+
             <h3 class="font-bold mt-4">Liste des adhérents</h3>
             <p>Faîtes l'appel de vos adhérents (présents/absents)</p>
+
             {%else%}
+
             <h2 class="text-2xl font-bold text-center mb-4">Espace Adhérent</h2>
             <p class="text-center mb-4">Consultez vos cours et vos activités sportives</p>
+
             <h3 class="font-bold mt-4">Séances disponnibles</h3>
             <p>Consultez les séances proposées par les coaches.</p>
+
+            {% for seance in seances %}
+            <div class="border rounded-lg p-4 mt-3">
+            <p>Activité : {{ seance.activite }}</p>
+            <p>Date : {{seance.date }}</p>
+            <p>Heure : {{seance.heure_debut }}</p>
+            <p>Lieu : {{ seance.lieu }}</p>
+            <p>Niveau : {{ seance.get_niveau_display }}</p>
+            <p>Nombre de places : {{ seance.places }}</p>
+            <p>Coach : {{seance.coach }}</p>
+            <p>Description : {{ seance.description }}</p>
+            </div>
+            {% empty %}
+            <p class="text-slate-500 text-center mt-2 mb-4">
+                Aucune séance disponible pour le moment.
+            </p>
+            {% endfor %}
+
+
             <h3 class="font-bold mt-4">Mes Inscriptions</h3>
             <p>Gérez, annulez ou avertissez de vos absences.</p>
-            {%endif%}         
+
+            {% for inscription in inscriptions %}
+            <div class="border rounded-lg p-4 mt-3">
+                <p>Activité : {{ inscription.seance.activite }}</p>
+                <p>Date : {{inscription.seance.date }}</p>
+                <p>Heure : {{inscription.seance.heure_debut }}</p>
+                <p>Statut : {{ incription.get_etat_display }}</p>
+            </div>
+            {% empty %}
+            <p> Vous n'avez aucune inscription.</p>
+
+            {%endfor%}
+
+            {%endif%}    
+
             <form method="post" action="{% url 'deconnexion' %}">
                 {% csrf_token %}
                 <button type="submit"

@@ -5,11 +5,21 @@ from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
 from .forms import Formulaire_inscription, Formulaire_connexion
 from .models import Seance, Inscription
+
+
 class Espace_membre_view(LoginRequiredMixin,TemplateView):
     template_name = "accueil/espace_membre.html"
 
+    def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                context["seances"] = Seance.objects.all().order_by("date", "heure_debut")
+                context["inscriptions"] = Inscription.objects.filter(utilisateur=self.request.user)
+                return context
+
 class Accueil_view(TemplateView):
     template_name = "accueil/accueil.html"
+
+
 
 class Connexion_view(FormView):
     template_name = "accueil/connexion.html"

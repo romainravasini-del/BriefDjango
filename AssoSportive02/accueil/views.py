@@ -1,10 +1,9 @@
 from django.shortcuts import redirect
 from django.contrib.auth import login
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, FormView
 from django.urls import reverse_lazy
-from .forms import Formulaire_inscription
+from .forms import Formulaire_inscription, Formulaire_connexion
 
 class Espace_membre_view(LoginRequiredMixin,TemplateView):
     template_name = "accueil/espace_membre.html"
@@ -19,11 +18,11 @@ class Connexion_view(FormView):
     def get_form_class(self):
         if self.request.method == "POST" and self.request.POST.get("action") == "inscription":
             return Formulaire_inscription
-        return AuthenticationForm
+        return Formulaire_connexion
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        if self.get_form_class() is AuthenticationForm:
+        if self.get_form_class() is Formulaire_connexion:
             kwargs["request"] = self.request
         return kwargs
 
@@ -31,7 +30,7 @@ class Connexion_view(FormView):
         context = super().get_context_data(**kwargs)
         if isinstance(context["form"], Formulaire_inscription):
             context["inscription_form"] = context["form"]
-            context["form"] = AuthenticationForm()
+            context["form"] = Formulaire_connexion()
         else:
             context["inscription_form"] = Formulaire_inscription()
         return context

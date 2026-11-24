@@ -1,3 +1,4 @@
+
 from django.shortcuts import redirect
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -7,29 +8,40 @@ from django.db.models import Q
 from .forms import Formulaire_inscription, Formulaire_connexion
 from .models import Seance, Inscription, Activite
 
+# imports pour les inscriptions aux séances
+from django.views import View
+from django.shortcuts import get_object_or_404
+from django.contrib import messages
+from django.utils import timezone
+from datetime import datetime
 
-class Espace_membre_view(LoginRequiredMixin,TemplateView):
+
+class Espace_membre_view(LoginRequiredMixin, TemplateView):
     template_name = "accueil/espace_membre.html"
 
-
     def get_context_data(self, **kwargs):
-                context = super().get_context_data(**kwargs)
-                context["activites"] = Activite.objects.all()
-                seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
-                recherche = self.request.GET.get("recherche", "").strip()
-                activite_id = self.request.GET.get ("activite", "").strip()
-                if recherche:
-                    seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche)|Q(date__contains=recherche)|Q(heure_debut__contains=recherche))
-                if activite_id:
-                    seances = seances.filter(activite_id=activite_id)
-                context["seances"] = seances
-                context["activite_selectionnee"]=activite_id
-                context["inscriptions"] = Inscription.objects.filter(utilisateur=self.request.user)
-                context["recherche"] = self.request.GET.get("recherche", "")
-                return context
+        context = super().get_context_data(**kwargs)
+        context["activites"] = Activite.objects.all()
+        seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
+        recherche = self.request.GET.get("recherche", "").strip()
+        activite_id = self.request.GET.get("activite", "").strip()
+
+        if recherche:
+            seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche)|Q(date__contains=recherche)|Q(heure_debut__contains=recherche))
+
+        if activite_id:
+            seances = seances.filter(activite_id=activite_id)
+
+        context["seances"] = seances
+        context["activite_selectionnee"] = activite_id
+        context["inscriptions"] = Inscription.objects.filter(utilisateur=self.request.user)
+        context["recherche"] = self.request.GET.get("recherche", "")
+        return context
+
 
 class Accueil_view(TemplateView):
     template_name = "accueil/accueil.html"
+
 
 class Catalogue_view(ListView):
     model = Seance
@@ -39,23 +51,29 @@ class Catalogue_view(ListView):
     def get_queryset(self):
         seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
         recherche = self.request.GET.get("recherche", "").strip()
-        activite_id = self.request.GET.get ("activite", "").strip()
+        activite_id = self.request.GET.get("activite", "").strip()
+
         if recherche:
             seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche))
+
         if activite_id:
             seances = seances.filter(activite_id=activite_id)
+
         return seances
-    def get_context_data(self,**kwargs):
+
+    def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["activites"] = Activite.objects.all()
         context["recherche"] = self.request.GET.get("recherche", "")
-        context["activite_selectionnee"]=self.request.GET.get("activite","")
+        context["activite_selectionnee"] = self.request.GET.get("activite", "")
         return context
+
 
 class Seance_detail_view(DetailView):
     model = Seance
     template_name = "accueil/seance_detail.html"
     context_object_name = "seance"
+
 
 class Connexion_view(FormView):
     template_name = "accueil/connexion.html"
@@ -88,5 +106,88 @@ class Connexion_view(FormView):
         else:
             login(self.request, form.get_user())
         return super().form_valid(form)
-# Create your views here.
 
+
+# permettre à un adhérent de s'inscrire à une séance
+class Inscrire_seance_view(LoginRequiredMixin, View):
+
+    def post(self, request, seance_id):
+        if request.user.role != "utilisateur":
+            messages.error(request, "Seuls les adhérents peuvent s'inscrire.")
+            return redirect("Espace_membre")
+
+        seance = get_object_or_404(Seance, pk=seance_id)
+
+        debut = timezone.make_aware(
+            datetime.combine(seance.date, seance.heure_debut),
+            timezone.get_current_timezone()
+        )
+
+        if debut <= timezone.now():
+            messages.error(request, "Cette séance a déjà commencé.")
+            return redirect("Espace_membre")
+
+        if not request.user.certificat_jusqu_au or request.user.certificat_jusqu_au < seance.date:
+            messages.error(request, "Votre certificat médical est absent ou expiré.")
+            return redirect("Espace_membre")
+
+        inscription = Inscription.objects.filter(
+            utilisateur=request.user,
+            seance=seance
+        ).first()
+
+        if inscription and inscription.etat != "annule":
+            messages.warning(request, "Vous avez déjà une inscription pour cette séance.")
+            return redirect("Espace_membre")
+
+        nombre_inscrits = Inscription.objects.filter(
+            seance=seance,
+            etat="inscrit"
+        ).count()
+
+        etat = "inscrit" if nombre_inscrits < seance.places else "liste_attente"
+
+        if inscription:
+            inscription.etat = etat
+            inscription.save()
+        else:
+            Inscription.objects.create(
+                utilisateur=request.user,
+                seance=seance,
+                etat=etat
+            )
+
+        messages.success(request, "Votre demande a été enregistrée.")
+        return redirect("Espace_membre")
+
+
+# permettre à un adhérent d'annuler sa participation
+class Annuler_inscription_view(LoginRequiredMixin, View):
+
+    def post(self, request, inscription_id):
+        inscription = get_object_or_404(
+            Inscription,
+            pk=inscription_id,
+            utilisateur=request.user
+        )
+
+        debut = timezone.make_aware(
+            datetime.combine(
+                inscription.seance.date,
+                inscription.seance.heure_debut
+            ),
+            timezone.get_current_timezone()
+        )
+
+        if debut <= timezone.now():
+            messages.error(request, "Impossible d'annuler une séance déjà commencée.")
+
+        elif inscription.etat not in ["inscrit", "liste_attente"]:
+            messages.error(request, "Cette inscription ne peut pas être annulée.")
+
+        else:
+            inscription.etat = "annule"
+            inscription.save()
+            messages.success(request, "Votre participation a été annulée.")
+
+        return redirect("Espace_membre")

@@ -13,8 +13,10 @@ class Espace_membre_view(LoginRequiredMixin,TemplateView):
 
     def get_context_data(self, **kwargs):
                 context = super().get_context_data(**kwargs)
+                context["activites"] = Activite.objects.all()
                 context["seances"] = Seance.objects.all().order_by("date", "heure_debut")
                 context["inscriptions"] = Inscription.objects.filter(utilisateur=self.request.user)
+                context["recherche"] = self.request.GET.get("recherche", "")
                 return context
 
 class Accueil_view(TemplateView):
@@ -26,15 +28,25 @@ class Catalogue_view(ListView):
     context_object_name = "seances"
 
     def get_queryset(self):
-        qs = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
-        q = self.request.GET.get("q").strip()
-        acticite_id = self.request.GET.get ("activite", "").strip()
+        seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
+        recherche = self.request.GET.get("recherche", "").strip()
+        activite_id = self.request.GET.get ("activite", "").strip()
         if recherche:
-            seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(Lieu__icontains=recherche)|Q(description__icontains=recherche))
-        
+            seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche))
+        if activite_id:
+            seances = seances.filter(activite_id=activite_id)
+        return seances
+    def get_context_data(self,**kwargs):
+        context = super().get_context_data(**kwargs)
+        context["activites"] = Activite.objects.all()
+        context["recherche"] = self.request.GET.get("recherche", "")
+        context["activite_selectionnee"]=self.request.GET.get("activite","")
+        return context
 
-    def get_queryset(self):
-        return Seance.objects.filter(date__gte=timezone.now()).order_by("date", "heure_debut")
+class Seance_detail_view(DetailView):
+    model = Seance
+    template_name = "accueil/seance_detail.html"
+    context_object_name = "seance"
 
 class Connexion_view(FormView):
     template_name = "accueil/connexion.html"

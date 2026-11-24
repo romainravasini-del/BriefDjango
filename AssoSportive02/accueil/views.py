@@ -19,7 +19,7 @@ class Espace_membre_view(LoginRequiredMixin,TemplateView):
                 recherche = self.request.GET.get("recherche", "").strip()
                 activite_id = self.request.GET.get ("activite", "").strip()
                 if recherche:
-                    seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche))
+                    seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche)|Q(date__contains=recherche)|Q(heure_debut__contains=recherche))
                 if activite_id:
                     seances = seances.filter(activite_id=activite_id)
                 context["seances"] = seances

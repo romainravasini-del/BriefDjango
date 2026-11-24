@@ -24,7 +24,11 @@ urlpatterns = [
      views.Connexion_view.as_view(), 
      name="inscription"),
 
-     path("activite/", 
+     path("catalogue/", 
+     views.Catalogue_view.as_view(), 
+     name="catalogue"),
+
+     path("catalogue/<int:pk>/", 
      views.Seance_detail_view.as_view(), 
      name="seance_detail"),
 

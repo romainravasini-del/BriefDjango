@@ -13,16 +13,6 @@
             Bienvenue sur votre espace membre. Vous pouvez ici gérer vos activités sportives et vos informations personnelles.
         </p>
 
-        
-        {% if messages %}
-            <div class="mb-6 space-y-2">
-                {% for message in messages %}
-                    <p class="border border-slate-200 bg-slate-50 text-slate-700 rounded-lg p-3">
-                        {{ message }}
-                    </p>
-                {% endfor %}
-            </div>
-        {% endif %}
 
         {% if user.role == "gestionnaire" %}
 
@@ -127,7 +117,9 @@
                             </span>
                         </div>
                         <p class="text-slate-600">{{ seance.date }} à {{ seance.heure_debut }}</p>
-                        <p class="text-slate-600">{{ seance.lieu }} · {{ seance.places }} places</p>
+                        <p class="text-slate-600">{{ seance.lieu }}</p>
+                        <p class="text-slate-600">Places totales : {{ seance.places }}</p>
+                        <p class="text-green-600 font-semibold">Places restantes : {{ seance.places_restantes }}</p>
                         <p class="text-slate-600">Coach : {{ seance.coach }}</p>
                         <p class="text-slate-500 text-sm mt-2">{{ seance.description }}</p>
 

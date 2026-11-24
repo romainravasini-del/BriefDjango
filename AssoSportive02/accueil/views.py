@@ -4,7 +4,7 @@ from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView, FormView, ListView, DetailView
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Q, Count
 from .forms import Formulaire_inscription, Formulaire_connexion
 from .models import Seance, Inscription, Activite
 
@@ -22,7 +22,13 @@ class Espace_membre_view(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["activites"] = Activite.objects.all()
-        seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
+        maintenant = timezone.localtime()
+
+        seances = Seance.objects.select_related("activite", "coach").filter(
+            Q(date__gt=maintenant.date()) |
+            Q(date=maintenant.date(), heure_debut__gt=maintenant.time())
+        ).order_by("date", "heure_debut")
+
         recherche = self.request.GET.get("recherche", "").strip()
         activite_id = self.request.GET.get("activite", "").strip()
 
@@ -31,6 +37,19 @@ class Espace_membre_view(LoginRequiredMixin, TemplateView):
 
         if activite_id:
             seances = seances.filter(activite_id=activite_id)
+
+        # AJOUT : calcul des places occupées et restantes
+        seances = seances.annotate(
+            nombre_inscrits=Count(
+                "inscription",
+                filter=Q(inscription__etat="inscrit")
+            )
+        )
+
+        for seance in seances:
+            seance.places_restantes = max(
+                0, seance.places - seance.nombre_inscrits
+            )
 
         context["seances"] = seances
         context["activite_selectionnee"] = activite_id
@@ -58,6 +77,19 @@ class Catalogue_view(ListView):
 
         if activite_id:
             seances = seances.filter(activite_id=activite_id)
+
+        # AJOUT : calcul des places occupées et restantes
+        seances = seances.annotate(
+            nombre_inscrits=Count(
+                "inscription",
+                filter=Q(inscription__etat="inscrit")
+            )
+        )
+
+        for seance in seances:
+            seance.places_restantes = max(
+                0, seance.places - seance.nombre_inscrits
+            )
 
         return seances
 

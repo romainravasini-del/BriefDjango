@@ -2,10 +2,20 @@
 {% load static %}
 {% block content %}
 
-<h1 class="text-5xl font-bold text-slate-800 text-center">Association Multisports de l'Aisne </h1>
-<div class="max-w-3xl mx-auto py-10 px-6">
-    <p class="text-slate-500 text-center mt-4 mb-16">L'Association Multisports de l'Aisne vous souhaite la bienvenue et
-        vous invite à découvrir et à rejoindre ses membres pour pratiquer de nombreuses activités</p>
+<h1 class="text-4xl md:text-5xl font-bold text-slate-800 text-center">Association Multisports de l'Aisne</h1>
+<div class="max-w-4xl mx-auto py-8 px-4">
+    <p class="text-slate-500 text-center mt-2 mb-8">L'Association Multisports de l'Aisne vous souhaite la bienvenue et
+        vous invite à découvrir et à rejoindre ses membres pour pratiquer de nombreuses activités.</p>
+
+    <!-- Vidéo de présentation en lecture automatique -->
+    <div class="mb-10 rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900">
+        <video class="w-full aspect-video object-cover"
+            src="{% static 'accueil/video/presentation.webm' %}"
+            preload="auto" autoplay muted loop playsinline controls>
+            Votre navigateur ne prend pas en charge la lecture vidéo.
+        </video>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 md:col-span-2 text-center">
 

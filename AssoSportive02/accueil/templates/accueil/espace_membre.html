@@ -16,11 +16,80 @@
 
         {% if user.role == "gestionnaire" %}
 
-        <h2 class="text-2xl font-bold text-center mb-4">Espace Coach</h2>
-        <p class="text-slate-500 text-center mb-4">Gérez vos adhérents et vos salles disponibles</p>
+        <h2 class="text-2xl font-bold text-center mb-2">Espace Coach</h2>
+        <p class="text-slate-500 text-center mb-8">Gérez les inscriptions et faites l'appel de vos adhérents (des plus récentes aux plus anciennes).</p>
 
-        <h3 class="font-bold mt-4">Liste des adhérents</h3>
-        <p>Faites l'appel de vos adhérents (présents/absents)</p>
+        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-700 text-sm border-b border-slate-200">
+                        <th class="p-4">Adhérent</th>
+                        <th class="p-4">Séance</th>
+                        <th class="p-4">Date séance</th>
+                        <th class="p-4">Créée le</th>
+                        <th class="p-4">État</th>
+                        <th class="p-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 text-sm">
+                    {% for inscription in inscriptions_gestion %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-4 font-medium text-slate-800">{{ inscription.utilisateur }}</td>
+                        <td class="p-4 text-slate-600">{{ inscription.seance.activite }} — {{ inscription.seance.lieu }}</td>
+                        <td class="p-4 text-slate-600">{{ inscription.seance.date }} à {{ inscription.seance.heure_debut }}</td>
+                        <td class="p-4 text-slate-500">{{ inscription.date_creation|date:"d/m/Y H:i" }}</td>
+                        <td class="p-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold
+                                {% if inscription.etat == 'inscrit' %}bg-sky-100 text-sky-700
+                                {% elif inscription.etat == 'liste_attente' %}bg-amber-100 text-amber-700
+                                {% elif inscription.etat == 'present' %}bg-emerald-100 text-emerald-700
+                                {% elif inscription.etat == 'absent' %}bg-red-100 text-red-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ inscription.get_etat_display }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            {% if inscription.etat == "inscrit" %}
+                                <div class="flex flex-wrap gap-2">
+                                    <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                        <input type="hidden" name="etat" value="present">
+                                        <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Présent</button>
+                                    </form>
+                                    <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                        <input type="hidden" name="etat" value="absent">
+                                        <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Absent</button>
+                                    </form>
+                                    <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                        <input type="hidden" name="etat" value="annule">
+                                        <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Annuler</button>
+                                    </form>
+                                </div>
+                            {% elif inscription.etat == "liste_attente" %}
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    <input type="hidden" name="etat" value="annule">
+                                    <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Annuler</button>
+                                </form>
+                            {% else %}
+                                <span class="text-slate-400 text-xs">Aucune action</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-6 text-center text-slate-500">Aucune inscription enregistrée.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         {% else %}
 

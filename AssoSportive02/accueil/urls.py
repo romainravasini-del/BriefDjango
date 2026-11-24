@@ -43,4 +43,12 @@ urlpatterns = [
          views.Annuler_inscription_view.as_view(),
          name="annuler_inscription"),
 
+    path("gestion/",
+         views.Gestion_view.as_view(),
+         name="gestion"),
+
+    path("gestion/<int:inscription_id>/changer-etat/",
+         views.Gestion_transition_view.as_view(),
+         name="gestion_changer_etat"),
+
 ]

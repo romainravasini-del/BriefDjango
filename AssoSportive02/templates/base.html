@@ -30,7 +30,7 @@
     <main class="flex-1 max-w-6xl w-full mx-auto p-6">
         {% if messages %}
             {% for message in messages %}
-                <div class="mb-4 p-4 rounded-lg bg-sky-100 text-sky-800">
+                <div class="mb-4 p-4 rounded-lg border text-sm font-medium {% if 'error' in message.tags %}bg-red-50 border-red-200 text-red-700{% elif 'warning' in message.tags %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-emerald-50 border-emerald-200 text-emerald-700{% endif %}">
                     {{ message }}
                 </div>
             {% endfor %}

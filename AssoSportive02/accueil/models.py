@@ -52,8 +52,8 @@ class Inscription(models.Model):
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.PROTECT)
     seance = models.ForeignKey(Seance, on_delete=models.PROTECT)
     etat = models.CharField(max_length=50, choices=etat_choix, default='inscrit')
-    date_creation = models.DateTimeField()
-    date_modification = models.DateTimeField()
+    date_creation = models.DateTimeField(default=timezone.now)
+    date_modification = models.DateTimeField(default=timezone.now)
 
     class Meta:
         unique_together = ('utilisateur', 'seance')

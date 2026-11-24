@@ -29,5 +29,5 @@ else:
     print('Superuser déjà présent')
 "
 
-python manage.py data_loader
+python manage.py charger_donnees
 python manage.py runserver

@@ -11,10 +11,19 @@ from .models import Seance, Inscription, Activite
 class Espace_membre_view(LoginRequiredMixin,TemplateView):
     template_name = "accueil/espace_membre.html"
 
+
     def get_context_data(self, **kwargs):
                 context = super().get_context_data(**kwargs)
                 context["activites"] = Activite.objects.all()
-                context["seances"] = Seance.objects.all().order_by("date", "heure_debut")
+                seances = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
+                recherche = self.request.GET.get("recherche", "").strip()
+                activite_id = self.request.GET.get ("activite", "").strip()
+                if recherche:
+                    seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche))
+                if activite_id:
+                    seances = seances.filter(activite_id=activite_id)
+                context["seances"] = seances
+                context["activite_selectionnee"]=activite_id
                 context["inscriptions"] = Inscription.objects.filter(utilisateur=self.request.user)
                 context["recherche"] = self.request.GET.get("recherche", "")
                 return context

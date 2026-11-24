@@ -1,10 +1,11 @@
 from django.shortcuts import redirect
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView, FormView
+from django.views.generic import TemplateView, FormView, ListView, DetailView
 from django.urls import reverse_lazy
+from django.db.models import Q
 from .forms import Formulaire_inscription, Formulaire_connexion
-from .models import Seance, Inscription
+from .models import Seance, Inscription, Activite
 
 
 class Espace_membre_view(LoginRequiredMixin,TemplateView):
@@ -19,7 +20,21 @@ class Espace_membre_view(LoginRequiredMixin,TemplateView):
 class Accueil_view(TemplateView):
     template_name = "accueil/accueil.html"
 
+class Catalogue_view(ListView):
+    model = Seance
+    template_name = "accueil/catalogue.html"
+    context_object_name = "seances"
 
+    def get_queryset(self):
+        qs = Seance.objects.select_related("activite", "coach").order_by("date", "heure_debut")
+        q = self.request.GET.get("q").strip()
+        acticite_id = self.request.GET.get ("activite", "").strip()
+        if recherche:
+            seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(Lieu__icontains=recherche)|Q(description__icontains=recherche))
+        
+
+    def get_queryset(self):
+        return Seance.objects.filter(date__gte=timezone.now()).order_by("date", "heure_debut")
 
 class Connexion_view(FormView):
     template_name = "accueil/connexion.html"

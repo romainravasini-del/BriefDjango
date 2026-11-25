@@ -1,33 +1,132 @@
 {% extends "base.html" %}
 {% load static %}
+
+{% comment %}
+==============================================================================
+connexion.html : page de connexion ET d'inscription (adresse "/connexion/")
+==============================================================================
+
+RÔLE DE LA PAGE
+  Deux formulaires côte à côte :
+    - à gauche  : "Connexion"   (compte existant)
+    - à droite  : "Inscription" (création d'un compte)
+  Les deux envoient leurs données en POST vers la même adresse. Un bouton
+  portant name="action" permet à la vue de savoir lequel a été soumis.
+
+BALISES ET VARIABLES DJANGO UTILISÉES
+  {% extends "base.html" %}   Hérite du gabarit commun. Doit être la TOUTE
+                              PREMIÈRE balise du fichier.
+  {% load static %}           Active {% static %} (non utilisée ici, mais
+                              conservée par habitude pour les gabarits du site).
+  {% block content %}         Seul ce bloc est injecté dans base.html. Ce qui
+                              est écrit hors d'un bloc (dont ce commentaire)
+                              est ignoré.
+  {% csrf_token %}            OBLIGATOIRE dans tout formulaire POST : ajoute un
+                              jeton secret qui protège contre les attaques CSRF
+                              (requêtes forgées depuis un autre site). Sans lui,
+                              Django refuse la requête avec une erreur 403.
+  {{ form.as_p }}             "form" est fourni par la vue (formulaire de
+                              connexion). as_p génère automatiquement, pour
+                              chaque champ : le label, le champ de saisie, et
+                              les messages d'erreur, chacun dans un <p>.
+  {{ inscription_form.as_p }} Même principe pour le formulaire d'inscription,
+                              transmis par la vue sous le nom "inscription_form".
+
+ATTRIBUTS DES FORMULAIRES
+  method="post"   Les données partent dans le corps de la requête (jamais dans
+                  l'URL), indispensable pour un mot de passe.
+  Pas d'attribut action : le formulaire est renvoyé vers l'adresse de la page
+                  actuelle.
+  type="submit"   Le bouton envoie le formulaire.
+  name="action" value="connexion" / value="inscription"
+                  Les deux formulaires arrivent à la même vue. La valeur du
+                  bouton cliqué est transmise dans la requête
+                  (request.POST["action"]) : la vue s'en sert pour savoir quel
+                  formulaire traiter.
+
+CLASSES TAILWIND UTILISÉES
+  Tailwind fonctionne avec des classes "utilitaires" : chaque classe applique
+  une règle CSS. On les combine directement dans l'attribut class.
+
+  Rappels d'échelle :
+    - Espacements : 1 unité = 0,25 rem (donc 4 = 1 rem = 16 px, 8 = 2 rem).
+    - Préfixes responsive (mobile d'abord) : sans préfixe = toutes les tailles,
+      "md:" = à partir de 768 px.
+    - Préfixe "hover:" = appliqué seulement au survol de la souris.
+
+  Typographie
+    text-5xl / text-2xl      Taille du texte (très grand pour le titre de la
+                             page, grand pour les titres de carte).
+    font-bold / font-semibold  Graisse : gras / demi-gras.
+    text-center              Texte centré.
+    text-slate-500/800       Couleur du texte : gris-bleu, du plus clair (500)
+                             au plus foncé (800).
+    text-white               Texte blanc (sur le bouton).
+
+  Mise en page
+    max-w-3xl                Largeur maximale du contenu (48 rem, environ 770 px).
+    mx-auto                  Marges gauche/droite automatiques = bloc centré.
+    w-full                   Largeur à 100 % du parent (le bouton occupe toute
+                             la largeur de sa carte).
+
+  Grille
+    grid                     Active la grille CSS.
+    grid-cols-1              Une colonne (mobile : les cartes s'empilent).
+    md:grid-cols-2           Deux colonnes dès 768 px (cartes côte à côte).
+    gap-8                    Espace entre les cellules de la grille.
+
+  Espacements
+    p-6 / px-4 / px-6 / py-2 / py-10   Padding interne : p = tous côtés,
+                             px = horizontal, py = vertical.
+    mt-2 / mt-4 / mb-6 / mb-8  Marges extérieures : mt = haut, mb = bas.
+
+  Apparence (fond, cadre, ombre)
+    bg-white/95              Fond blanc à 95 % d'opacité. La syntaxe "/95"
+                             règle la transparence de la couleur.
+    bg-sky-400               Fond bleu ciel (couleur du site) pour le bouton.
+    hover:bg-sky-500         Bleu plus foncé au survol.
+    border                   Bordure fine de 1 px.
+    border-sky-200/80        Couleur de la bordure : bleu ciel très clair,
+                             à 80 % d'opacité.
+    rounded-lg / rounded-xl  Coins arrondis (le bouton moins que la carte).
+    shadow-md                Ombre portée de force moyenne.
+    transition               Anime en douceur le changement de couleur au survol.
+{% endcomment %}
+
 {% block content %}
 
-
 <h1 class="text-5xl font-bold text-slate-800 text-center">Bienvenue à l'Association Multisports de l'Aisne</h1>
+{# Conteneur principal : largeur limitée et centrée, avec des marges autour #}
 <div class="max-w-3xl mx-auto py-10 px-6">
-<p class="text-slate-500 text-center mt-2 mb-8">Veuillez vous connecter pour accéder à votre compte. </p>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-<section class="bg-white/95 p-6 rounded-xl shadow-md border border-sky-200/80">
-
+    <p class="text-slate-500 text-center mt-2 mb-8">Veuillez vous connecter pour accéder à votre compte. </p>
+    {# Grille : cartes empilées sur mobile, côte à côte dès 768 px #}    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {# ---------- Carte de gauche : CONNEXION ---------- #}
+        <section class="bg-white/95 p-6 rounded-xl shadow-md border border-sky-200/80">
             <h2 class="text-2xl font-bold text-slate-800 text-center mb-6">Connexion</h2>
             <form method="post">
+                {# Jeton de sécurité obligatoire dans chaque formulaire POST #}
                 {% csrf_token %}
+                {# Champs identifiant + mot de passe générés par Django, avec leurs erreurs (ex. "identifiants incorrects") #}
                 {{ form.as_p }}
+                {# name="action" + value : permet à la vue de reconnaître que c'est ce formulaire qui a été envoyé #}
                 <button type="submit" name="action" value="connexion" class="mt-4 w-full bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">Se connecter
                 </button>
             </form>
         </section>
 
+        {# ---------- Carte de droite : INSCRIPTION ---------- #}
         <section class="bg-white/95 p-6 rounded-xl shadow-md border border-sky-200/80">
             <h2 class="text-2xl font-bold text-slate-800 text-center mb-6">Inscription</h2>
             <form method="post">
                 {% csrf_token %}
+                {# Formulaire d'inscription fourni par la vue sous le nom "inscription_form". Les erreurs de validation s'affichent près des champs concernés #}
                 {{inscription_form.as_p }}
                 <button type="submit" name="action" value="inscription" class="mt-4 w-full bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">S'inscrire
                 </button>
             </form>
         </section>
     </div>
-    </div>
+</div>
 
-    {% endblock %}
+{% endblock %}

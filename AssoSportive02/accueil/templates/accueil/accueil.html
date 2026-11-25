@@ -1,36 +1,143 @@
 {% extends "base.html" %}
 {% load static %}
+
+{% comment %}
+==============================================================================
+accueil.html : page d'accueil publique du site (adresse "/")
+==============================================================================
+
+RÔLE DE LA PAGE
+  - Présente l'association et affiche une vidéo de présentation.
+  - Propose un bouton adapté au visiteur :
+      * connecté  -> "Mon espace membre"
+      * anonyme   -> "Se connecter / S'inscrire"
+
+BALISES DJANGO UTILISÉES
+  {% extends "base.html" %}   Hérite du gabarit commun (barre de navigation,
+                              chargement de Tailwind, messages). Cette balise
+                              doit être la TOUTE PREMIÈRE du fichier.
+  {% load static %}           Active la balise {% static %}, nécessaire pour
+                              référencer un fichier du dossier static/.
+  {% block content %}         Seul ce bloc est injecté dans base.html. Tout ce
+                              qui est écrit hors d'un bloc (dont ce commentaire)
+                              est ignoré par Django.
+  {% static 'chemin' %}       Génère l'URL d'un fichier statique, sans écrire
+                              le chemin en dur.
+  {% url 'nom' %}             Génère l'adresse à partir du NOM de la route
+                              défini dans urls.py (name="..."). Le nom est
+                              sensible à la casse : il doit être identique.
+  {% if user.is_authenticated %}
+                              "user" est fourni automatiquement à tous les
+                              templates. is_authenticated vaut True si
+                              quelqu'un est connecté.
+
+CLASSES TAILWIND UTILISÉES
+  Tailwind fonctionne avec des classes "utilitaires" : chaque classe applique
+  UNE règle CSS. On les combine directement dans l'attribut class.
+
+  Rappels d'échelle :
+    - Espacements : 1 unité = 0,25 rem (donc 4 = 1 rem = 16 px, 8 = 2 rem).
+    - Préfixes responsive (mobile d'abord) : sans préfixe = toutes les tailles,
+      "sm:" = à partir de 640 px, "md:" = à partir de 768 px.
+    - Préfixe "hover:" = appliqué seulement au survol de la souris.
+
+  Typographie
+    text-4xl / md:text-5xl   Taille du texte (4xl sur mobile, 5xl dès 768 px).
+    text-lg                  Texte légèrement agrandi.
+    font-bold / font-semibold  Graisse : gras / demi-gras.
+    text-center              Texte centré.
+    text-slate-500/600/800   Couleur du texte : gris-bleu, du plus clair
+                             (500) au plus foncé (800).
+    leading-relaxed          Interligne aéré, plus confortable à lire.
+
+  Mise en page
+    max-w-4xl                Largeur maximale du contenu (56 rem, environ 900 px).
+    mx-auto                  Marges gauche/droite automatiques = bloc centré.
+    w-full                   Largeur à 100 % du parent.
+    sm:w-auto                Dès 640 px, la largeur s'adapte au contenu
+                             (le bouton n'est plus pleine largeur).
+    inline-block             Élément en ligne qui accepte padding et largeur
+                             (nécessaire pour qu'un lien <a> ressemble à un bouton).
+    aspect-video             Force un ratio 16/9 : la hauteur suit la largeur.
+    object-cover             La vidéo remplit son cadre en étant recadrée si
+                             besoin, sans déformation.
+
+  Grille
+    grid                     Active la grille CSS.
+    grid-cols-1              Une colonne (mobile).
+    md:grid-cols-2           Deux colonnes dès 768 px.
+    gap-8                    Espace entre les cellules de la grille.
+    md:col-span-2            L'élément occupe les 2 colonnes dès 768 px.
+
+  Espacements
+    p-6 / px-4 / py-2 / py-8 Padding interne : p = tous côtés, px = horizontal,
+                             py = vertical.
+    mt-2 / mb-6 / mb-8 / mb-10  Marges extérieures : mt = haut, mb = bas.
+
+  Apparence (cadre, fond, ombre)
+    bg-white / bg-slate-900  Couleur de fond (blanc / gris-bleu très foncé).
+    bg-sky-400               Fond bleu ciel (couleur du site, comme le bouton).
+    text-white               Texte blanc.
+    rounded-lg / xl / 2xl    Coins arrondis, de moyen à très arrondi.
+    border + border-slate-200  Bordure fine de 1 px, gris clair.
+    shadow-sm / shadow-lg    Ombre portée, légère / marquée.
+    overflow-hidden          Coupe ce qui dépasse du cadre : indispensable pour
+                             que les coins arrondis s'appliquent aussi à la vidéo.
+    transition               Anime en douceur les changements (ici, la couleur
+                             du bouton au survol).
+
+ATTRIBUTS DE LA BALISE <video>
+    autoplay    Démarre seule. Les navigateurs ne l'autorisent QUE si la vidéo
+                est aussi "muted" (sans son).
+    muted       Sans son (condition de l'autoplay).
+    loop        Relance la vidéo à la fin.
+    playsinline Évite le plein écran forcé sur iPhone.
+    controls    Affiche les boutons de lecture, pour que le visiteur garde
+                le contrôle.
+    preload     "auto" : le navigateur charge la vidéo à l'avance.
+{% endcomment %}
+
 {% block content %}
 
 <h1 class="text-4xl md:text-5xl font-bold text-slate-800 text-center">Association Multisports de l'Aisne</h1>
+{# Conteneur principal : largeur limitée et centrée, pour garder une ligne de lecture confortable #}
 <div class="max-w-4xl mx-auto py-8 px-4">
     <p class="text-slate-500 text-center mt-2 mb-8">L'Association Multisports de l'Aisne vous souhaite la bienvenue et
         vous invite à découvrir et à rejoindre ses membres pour pratiquer de nombreuses activités.</p>
 
-    <!-- Vidéo de présentation en lecture automatique -->
+    {# Vidéo de présentation en lecture automatique #}
+    {# Le cadre (arrondi, ombre, bordure) est sur la div ; overflow-hidden fait suivre les coins arrondis à la vidéo #}
     <div class="mb-10 rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900">
+        {# Le fichier doit se trouver dans static/accueil/video/ (dossier "static" d'une application ou STATICFILES_DIRS) #}
         <video class="w-full aspect-video object-cover"
             src="{% static 'accueil/video/presentation.webm' %}"
             preload="auto" autoplay muted loop playsinline controls>
+            {# Texte de secours, affiché seulement si le navigateur ne sait pas lire la vidéo #}
             Votre navigateur ne prend pas en charge la lecture vidéo.
         </video>
     </div>
 
+    {# Grille : 1 colonne sur mobile, 2 dès 768 px. Ici une seule carte, qui prend toute la largeur grâce à md:col-span-2 #}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {# Carte d'appel à l'action : fond blanc, padding, coins arrondis, ombre légère et fine bordure #}
         <section class="bg-white/95 p-6 rounded-xl shadow-md border border-sky-200/80 md:col-span-2 text-center">
 
             <p class="text-slate-600 text-lg leading-relaxed mb-6">
                 Découvrez une variété d'activités sportives à destination des petits et des grands.
             </p>
 
+            {# Le bouton change selon le visiteur : la décision est prise côté serveur, avant l'envoi de la page #}
             {% if user.is_authenticated %}
 
+            {# Connecté : accès direct à l'espace membre. 'Espace_membre' est le name de la route dans urls.py #}
+            {# Le lien est stylé comme un bouton : fond bleu, survol plus foncé (hover:), pleine largeur sur mobile puis largeur auto dès 640 px (sm:) #}
             <a href="{% url 'Espace_membre' %}"
                 class="inline-block w-full sm:w-auto bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg transition text-center">
                 Mon espace membre </a>
 
             {% else %}
 
+            {# Anonyme : la page de connexion sert aussi de point d'entrée #}
             <a href="{% url 'connexion' %}"
                 class="inline-block w-full sm:w-auto bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-6 rounded-lg transition text-center">
                 Se connecter / S'inscrire </a>

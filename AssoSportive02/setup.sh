@@ -30,4 +30,4 @@ else:
 "
 
 python manage.py charger_donnees
-python manage.py runserver
+python manage.py runserver --insecure

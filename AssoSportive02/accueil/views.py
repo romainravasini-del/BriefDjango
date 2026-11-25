@@ -75,9 +75,27 @@ class Espace_membre_view(LoginRequiredMixin, TemplateView):
         )
         context["recherche"] = self.request.GET.get("recherche", "")
         if self.request.user.role == "gestionnaire":
-            context["inscriptions_gestion"] = Inscription.objects.select_related(
+            context["stats_etats"] = {
+            "inscrit": Inscription.objects.filter(etat="inscrit").count(),
+            "liste_attente": Inscription.objects.filter(etat="liste_attente").count(),
+            "present": Inscription.objects.filter(etat="present").count(),
+            "absent": Inscription.objects.filter(etat="absent").count(),
+            "annule": Inscription.objects.filter(etat="annule").count(),
+}
+            aujourd_hui = timezone.localdate()
+            toutes = Inscription.objects.select_related(
                 "utilisateur", "seance", "seance__activite"
             ).order_by("-date_creation")
+            activite_coach = self.request.GET.get("activite_coach", "").strip()
+            date_coach = self.request.GET.get("date_coach", "").strip()
+            if activite_coach:
+                toutes = toutes.filter(seance__activite_id=activite_coach)
+            if date_coach:
+                toutes = toutes.filter(seance__date=date_coach)
+            context["inscriptions_gestion"] = toutes
+            context["inscriptions_jour"] = toutes.filter(seance__date=aujourd_hui)
+            context["inscriptions_avenir"] = toutes.filter(seance__date__gt=aujourd_hui)
+            context["inscriptions_echues"] = toutes.filter(seance__date__lt=aujourd_hui)
         return context
 
         date_debut = self.request.GET.get("date_debut", "").strip()
@@ -278,6 +296,7 @@ class GestionnaireRequiredMixin(UserPassesTestMixin):
 
 
 class Gestion_view(GestionnaireRequiredMixin, ListView):
+    
     model = Inscription
     template_name = "accueil/espace_membre.html"
     context_object_name = "inscriptions_gestion"
@@ -287,6 +306,31 @@ class Gestion_view(GestionnaireRequiredMixin, ListView):
             "utilisateur", "seance", "seance__activite"
         ).order_by("-date_creation")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        aujourd_hui = timezone.localdate()
+        toutes = context["inscriptions_gestion"]
+        activite_coach = self.request.GET.get("activite_coach", "").strip()
+        date_coach = self.request.GET.get("date_coach", "").strip()
+        if activite_coach:
+            toutes = toutes.filter(seance__activite_id=activite_coach)
+        if date_coach:
+            toutes = toutes.filter(seance__date=date_coach)
+        context["activites"] = Activite.objects.all()
+        context["inscriptions_jour"] = toutes.filter(seance__date=aujourd_hui)
+        context["inscriptions_avenir"] = toutes.filter(seance__date__gt=aujourd_hui)
+        context["inscriptions_echues"] = toutes.filter(seance__date__lt=aujourd_hui)
+        return context
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["stats_etats"] = {
+            "inscrit": Inscription.objects.filter(etat="inscrit").count(),
+            "liste_attente": Inscription.objects.filter(etat="liste_attente").count(),
+            "present": Inscription.objects.filter(etat="present").count(),
+            "absent": Inscription.objects.filter(etat="absent").count(),
+            "annule": Inscription.objects.filter(etat="annule").count(),
+        }
+        return context
 
 class Gestion_transition_view(GestionnaireRequiredMixin, View):
     TRANSITIONS_AUTORISEES = {

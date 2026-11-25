@@ -68,8 +68,8 @@ Le script enchaîne, dans l'ordre :
 1. `python manage.py makemigrations`
 2. `python manage.py migrate`
 3. création du superuser (seulement s'il n'existe pas déjà, donc relançable)
-4. `python manage.py data_loader` (chargement des CSV)
-5. `python manage.py runserver`
+4. `python manage.py charger_donnees` (chargement des CSV)
+5. `python manage.py runserver --insecure` (ou `runserver` si `DEBUG=True`)
 
 L'application est ensuite disponible sur <http://127.0.0.1:8000/>.
 
@@ -79,7 +79,7 @@ L'application est ensuite disponible sur <http://127.0.0.1:8000/>.
 python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
-python manage.py data_loader
+python manage.py charger_donnees
 python manage.py runserver
 ```
 
@@ -94,7 +94,7 @@ Les fichiers CSV fournis sont dans `data/` (ils ne sont jamais modifiés) :
 | `objets.csv` | les séances |
 | `actions.csv` | des inscriptions déjà enregistrées |
 
-La commande `python manage.py data_loader` lit ces fichiers et remplit la base.
+La commande `python manage.py charger_donnees` lit ces fichiers et remplit la base.
 
 ## 6. Structure du projet
 
@@ -103,7 +103,7 @@ BriefDjango/
 ├── AssoSportive02/
 │   ├── accueil/                  # application principale
 │   │   ├── management/commands/
-│   │   │   └── data_loader.py    # commande de chargement des CSV
+│   │   │   └── charger_donnees.py # commande de chargement des CSV
 │   │   ├── migrations/
 │   │   ├── templates/accueil/    # accueil, connexion, espace membre
 │   │   ├── admin.py
@@ -147,22 +147,20 @@ Le schéma relationnel est dans [`docs/mcd.md`](docs/mcd.md) (diagramme Mermaid,
 - Si la séance est complète, l'inscription est créée à l'état `liste_attente` au lieu d'être refusée.
 - Un adhérent dont le certificat médical est absent ou expiré à la date de la séance ne peut pas s'inscrire (un message l'explique).
 - États d'une inscription : `inscrit`, `liste_attente`, `present`, `absent`, `annule`.
-- Transitions autorisées : voir la fiche A3 du brief. [À COMPLÉTER : comment un changement d'état interdit est empêché]
+- Transitions autorisées : voir la fiche A3 du brief. Toute transition non prévue est bloquée côté serveur par un dictionnaire `TRANSITIONS_AUTORISEES` dans `Gestion_transition_view` (et par vérification du propriétaire/rôle dans `Annuler_inscription_view`).
 
 ## 10. Choix techniques et justifications
 
-
-- **Découpage en applications** : [À COMPLÉTER]
-- **Représentation du rôle et de l'information propre au compte (certificat médical)** : [À COMPLÉTER]
-- **Blocage des changements d'état interdits** : [À COMPLÉTER]
-- **Commande de chargement relançable** : [À COMPLÉTER]
-- **Vues basées sur des classes** : [À COMPLÉTER]
+- **Découpage en applications** : une application principale unique (`accueil`) regroupant les modèles, formulaires, vues, URLs, templates et la commande de chargement, afin de garder une architecture simple et lisible.
+- **Représentation du rôle et de l'information propre au compte (certificat médical)** : modèle utilisateur personnalisé `Utilisateur` héritant d'`AbstractUser` (`AUTH_USER_MODEL = "accueil.Utilisateur"`), avec `role` (`utilisateur` / `gestionnaire`) et `certificat_jusqu_au` (`DateField`, nullable pour les coachs).
+- **Blocage des changements d'état interdits** : contrôle d'accès par `GestionnaireRequiredMixin` (`UserPassesTestMixin`, renvoyant `403` aux non-gestionnaires) et validation stricte des transitions côté serveur via `TRANSITIONS_AUTORISEES`.
+- **Commande de chargement relançable** : `charger_donnees.py` utilise `update_or_create` dans l'ordre des dépendances (`utilisateurs.csv`, `categories.csv`, `objets.csv`, `actions.csv`), conserve les dates conscientes du fuseau horaire (`timezone.make_aware`) et hache les mots de passe (`set_password`).
+- **Vues basées sur des classes** : utilisation des vues génériques Django (`TemplateView`, `FormView`, `ListView`, `DetailView`, `View`) combinées à `LoginRequiredMixin` et `UserPassesTestMixin`.
 
 ## 11. Vérification
 
-Le scénario de vérification est dans [À COMPLÉTER : chemin du fichier, par exemple `docs/scenario_verification.md`].
+La cohérence du jeu de données CSV est vérifiée avec `python data/verifier_donnees.py`, et le projet Django avec `python manage.py check` ainsi que des tests manuels dans le navigateur (parcours adhérent, certificat expiré, liste d'attente, annulation avec promotion automatique, et parcours coach `/gestion/` avec contrôle `403`).
 
 ## 12. Organisation du travail
 
-- Dépôt Git avec une branche par fonctionnalité et des pull requests relues par un autre membre du groupe
-- Tableau de suivi des tâches : [À COMPLÉTER : lien Trello ou équivalent]
+- Dépôt Git avec une branche `develop` et des branches par fonctionnalité (`feature/...`), avec revues et fusions régulières en équipe.

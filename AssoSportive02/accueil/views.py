@@ -32,12 +32,20 @@ class Espace_membre_view(LoginRequiredMixin, TemplateView):
 
         recherche = self.request.GET.get("recherche", "").strip()
         activite_id = self.request.GET.get("activite", "").strip()
+        date_debut = self.request.GET.get("date_debut", "").strip()
+        heure_debut = self.request.GET.get("heure_debut", "").strip()
 
         if recherche:
             seances = seances.filter(Q(activite__nom__icontains=recherche)|Q(lieu__icontains=recherche)|Q(description__icontains=recherche)|Q(date__contains=recherche)|Q(heure_debut__contains=recherche))
 
         if activite_id:
             seances = seances.filter(activite_id=activite_id)
+
+        if date_debut:
+            seances = seances.filter(date__gte=date_debut)
+
+        if heure_debut:
+            seances = seances.filter(heure_debut__gte=heure_debut)
 
         # AJOUT : calcul des places occupées et restantes
         seances = seances.annotate(
@@ -71,6 +79,13 @@ class Espace_membre_view(LoginRequiredMixin, TemplateView):
                 "utilisateur", "seance", "seance__activite"
             ).order_by("-date_creation")
         return context
+
+        date_debut = self.request.GET.get("date_debut", "").strip()
+        heure_debut = self.request.GET.get("heure_debut", "").strip()
+        if date_debut:
+            seances = seances.filter(date__gte=date_debut)
+        if heure_debut:
+            seances = seances.filter(heure_debut__gte=heure_debut)
 
 
 class Accueil_view(TemplateView):

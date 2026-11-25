@@ -10,20 +10,23 @@
 </head>
 
 <body class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-    <nav>
-        <ul class="flex items-center justify-between gap-6 bg-sky-400 text-white p-4 rounded-b-lg">
-            <li><a href="#">Activités</a></li>
-            <li><a href="#">Inscription aux séances</a></li>
-            <li><a href="#">Séances</a></li>
+    <nav class="bg-sky-400 text-white rounded-b-lg shadow-sm">
+        <ul class="max-w-6xl mx-auto flex items-center justify-between gap-6 p-4 font-medium">
+            <li><a href="{% url 'accueil' %}" class="hover:underline font-bold">Accueil</a></li>
             {% if user.is_authenticated %}
-            <li>
-                <form method="post" action="{% url 'deconnexion' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="hover:underline">Déconnexion</button>
-                </form>
-            </li>
+                {% if user.role == "gestionnaire" %}
+                    <li><a href="{% url 'gestion' %}" class="hover:underline">Espace Coach</a></li>
+                {% else %}
+                    <li><a href="{% url 'Espace_membre' %}" class="hover:underline">Mon espace membre</a></li>
+                {% endif %}
+                <li>
+                    <form method="post" action="{% url 'deconnexion' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="hover:underline">Déconnexion</button>
+                    </form>
+                </li>
             {% else %}
-            <li><a href="{% url 'connexion' %}">Connexion</a></li>
+                <li><a href="{% url 'connexion' %}" class="hover:underline">Connexion / Inscription</a></li>
             {% endif %}
         </ul>
     </nav>

@@ -4,9 +4,6 @@ set -e
 # Se placer dans le dossier du script (là où se trouve manage.py)
 cd "$(dirname "$0")"
 
-# Suppression de la BDD
-rm -f db_sqlite3.db
-
 # Charger les variables du .env
 set -a
 source .env

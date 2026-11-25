@@ -16,10 +16,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         file = settings.BASE_DIR.parent / "data" 
 
-        Inscription.objects.all().delete()
-        Seance.objects.all().delete()
-        Activite.objects.all().delete()
-        Utilisateur.objects.filter(is_superuser=False).delete()
         utilisateurs = {}
 
         with open(file / "utilisateurs.csv", encoding="utf-8", newline="") as f:

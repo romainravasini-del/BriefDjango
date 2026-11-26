@@ -320,9 +320,6 @@ class Gestion_view(GestionnaireRequiredMixin, ListView):
         context["inscriptions_jour"] = toutes.filter(seance__date=aujourd_hui)
         context["inscriptions_avenir"] = toutes.filter(seance__date__gt=aujourd_hui)
         context["inscriptions_echues"] = toutes.filter(seance__date__lt=aujourd_hui)
-        return context
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
         context["stats_etats"] = {
             "inscrit": Inscription.objects.filter(etat="inscrit").count(),
             "liste_attente": Inscription.objects.filter(etat="liste_attente").count(),

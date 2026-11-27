@@ -13,7 +13,7 @@ Application de gestion pour une association sportive, réalisée avec Django dan
 
 ## 1. Prérequis
 
-- Python 3.14 (version utilisée pendant le développement) [À CONFIRMER]
+- Python 3.14 (version utilisée pendant le développement)
 - Git
 - Un terminal bash (macOS, Linux, ou Git Bash / WSL sous Windows) pour le script `setup.sh`
 
@@ -41,7 +41,7 @@ Le fichier `.env` n'est **pas versionné** (il contient la clé secrète). Il se
 
 ```
 SECRET_KEY='remplacer-par-une-cle-secrete'
-DEBUG=True
+DEBUG=False
 DATABASE_NAME=db.sqlite3
 
 DJANGO_SUPERUSER_USERNAME=admin

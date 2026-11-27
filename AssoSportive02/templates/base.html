@@ -1,0 +1,175 @@
+{% load static %}
+
+{% comment %}
+==============================================================================
+base.html : gabarit commun, hérité par TOUTES les pages du site
+==============================================================================
+
+RÔLE DE LA PAGE
+  Définit le squelette HTML commun : <head> (titre, Tailwind, fond), barre de
+  navigation, zone des messages, contenu de la page et pied de page.
+  Les autres gabarits (accueil, connexion, espace membre) commencent par
+  {% extends "base.html" %} et ne remplissent que les blocs prévus ici.
+  Modifier ce fichier change donc l'apparence de tout le site.
+
+BLOCS DÉFINIS (les "trous" que les pages enfants remplissent)
+  {% block title %}     Titre de l'onglet. Contient une valeur par défaut
+                        ("AssoSportive02") utilisée si la page enfant ne le
+                        redéfinit pas.
+  {% block content %}   Contenu propre à chaque page, injecté dans <main>.
+
+BALISES ET VARIABLES DJANGO UTILISÉES
+  {% load static %}           Active {% static %} (non utilisée dans ce fichier
+                              pour l'instant, utile pour lier une image ou un CSS).
+  {% url 'nom' %}             Adresse construite depuis le NOM de la route
+                              (urls.py). Les noms utilisés ici : accueil,
+                              gestion, Espace_membre, deconnexion, connexion.
+                              Ils sont sensibles à la casse.
+  user.is_authenticated       True si un utilisateur est connecté. "user" est
+                              fourni automatiquement à tous les gabarits.
+  user.role                   Rôle du compte (champ du modèle utilisateur) :
+                              la navigation s'adapte (anonyme, adhérent, coach).
+  {% csrf_token %}            Obligatoire dans tout formulaire POST.
+  messages                    Messages posés par les vues avec messages.success(),
+                              messages.error()... Ils sont affichés UNE fois
+                              puis supprimés. Chaque message a des "tags"
+                              (success, error, warning, info) qui servent ici à
+                              choisir la couleur.
+
+NAVIGATION SELON LE VISITEUR
+  Anonyme    : Accueil + Connexion / Inscription
+  Adhérent   : Accueil + Mon espace membre + Déconnexion
+  Coach      : Accueil + Espace Coach + Déconnexion
+  Ce choix est fait côté serveur, mais il ne remplace pas la protection des
+  pages dans les vues : masquer un lien ne protège rien.
+  La déconnexion est un formulaire POST (Django n'accepte plus le GET).
+
+FOND DE PAGE (balise <style>)
+  Tailwind ne propose pas de motif répété : la classe personnalisée
+  .bg-sport-pattern est donc écrite en CSS. Elle empile deux fonds :
+    1. un motif SVG (silhouettes de sports) intégré directement dans le CSS
+       sous forme de "data URI" : aucun fichier image à charger. Il se répète
+       sur toute la page. fill-opacity='0.11' le rend très discret.
+    2. un dégradé diagonal bleu clair vers gris clair.
+  Dans background-image, la première valeur est au premier plan, la dernière
+  en arrière-plan. background-color est le fond de secours.
+
+TAILWIND
+  Chargé par le script CDN (cdn.tailwindcss.com) : pratique en développement,
+  mais non recommandé en production (le CSS est généré dans le navigateur à
+  chaque affichage). Pour un rendu final, compiler le CSS avec le CLI Tailwind.
+
+CLASSES TAILWIND UTILISÉES
+  Chaque classe applique UNE règle CSS. Échelle des espacements : 1 unité =
+  0,25 rem (4 = 16 px). "hover:" = au survol. "/90" ou "/80" = opacité en %.
+
+  Pied de page collé en bas (technique "sticky footer")
+    min-h-screen   Le body fait au moins la hauteur de l'écran.
+    flex flex-col  Les enfants du body (nav, main, footer) s'empilent en colonne.
+    flex-1         Le <main> prend tout l'espace libre : il repousse le pied de
+                   page en bas même si le contenu est court.
+
+  Mise en page
+    max-w-6xl      Largeur maximale du contenu (72 rem, environ 1150 px).
+    mx-auto        Bloc centré horizontalement.
+    w-full         Largeur à 100 % (nécessaire pour <main> dans un flex en colonne).
+    flex           Éléments alignés sur une ligne (liens de la navigation).
+    items-center   Alignement vertical au centre.
+    justify-between  Éléments répartis sur toute la largeur.
+    gap-6          Espace entre les éléments de la navigation.
+    p-4 / p-6 / py-4  Padding interne (tous côtés / vertical).
+    mb-4           Marge sous chaque message.
+
+  Texte
+    text-white / text-slate-500 / text-slate-800   Couleur du texte.
+    text-sm        Petite taille de texte.
+    text-center    Texte centré.
+    font-medium / font-bold   Graisse moyenne / gras.
+    hover:underline  Souligné au survol d'un lien.
+
+  Apparence
+    bg-sky-400            Fond bleu ciel de la barre de navigation.
+    bg-white/90           Fond blanc à 90 % d'opacité (pied de page).
+    rounded-b-lg          Coins arrondis seulement en bas (b = bottom).
+    rounded-lg            Coins arrondis sur les quatre côtés (messages).
+    shadow-sm             Ombre légère.
+    border / border-t     Bordure fine sur tous les côtés / en haut seulement.
+    border-sky-200/80     Bordure bleu très clair à 80 % d'opacité.
+    bg-red-50 / bg-amber-50 / bg-emerald-50   Fonds très clairs des messages.
+    border-red-200 ... text-red-700 ...       Bordure et texte assortis.
+{% endcomment %}
+
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    {# Encodage UTF-8 : indispensable pour afficher correctement les accents #}
+    <meta charset="UTF-8">
+    {# Adapte la page à la largeur de l'écran sur mobile (sans cela, rendu "bureau" réduit) #}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Titre de l'onglet : valeur par défaut, redéfinissable page par page avec un bloc title #}
+    <title>{% block title %}AssoSportive02{% endblock %}</title>
+    {# Tailwind via CDN : adapté au développement, à remplacer par le CSS compilé (CLI) pour le rendu final #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    {# CSS personnalisé : le motif de fond n'existe pas dans Tailwind, on crée donc une classe maison #}
+    <style>
+        .bg-sport-pattern {
+            background-color: #e0f2fe;
+            background-image:
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280' fill='%230284c7' fill-opacity='0.11'%3E%3C!-- Coureur silhouette --%3E%3Ccircle cx='68' cy='34' r='8'/%3E%3Cpath d='M58 46c4-3 10-3 14 1l12 10c2 2 2 5 0 7s-5 2-7 0l-8-6-5 14 13 12c2 2 3 5 1 8l-9 17c-1 3-5 4-7 2-3-1-4-5-2-7l7-14-12-10-8 13-14 7c-3 1-6 0-7-3s0-6 3-7l11-5 9-19-9-3-8 8c-2 2-5 2-7 0s-2-5 0-7l11-11c2-2 5-3 8-2l12 3z'/%3E%3C!-- Haltère réaliste avec disques --%3E%3Crect x='166' y='52' width='68' height='6' rx='3'/%3E%3Crect x='172' y='38' width='8' height='34' rx='3'/%3E%3Crect x='162' y='43' width='7' height='24' rx='2'/%3E%3Crect x='220' y='38' width='8' height='34' rx='3'/%3E%3Crect x='231' y='43' width='7' height='24' rx='2'/%3E%3C!-- Montagne escalade --%3E%3Cpath d='M24 228l34-56 20 30 14-20 32 46H24zm34-38l-8 14 10 5 8-9-10-10z'/%3E%3C!-- Nageur + vagues --%3E%3Ccircle cx='215' cy='186' r='7'/%3E%3Cpath d='M174 202c10-10 24-12 36-4l16 10c3 2 3 6 1 8-2 3-6 3-8 1l-12-7-14 4c-4 1-9 0-12-3l-7-9zm-14 18c10-6 20-6 30 0s20 6 30 0 20-6 30 0v6c-10 6-20 6-30 0s-20-6-30 0-20 6-30 0v-6z'/%3E%3C!-- Gant de boxe détaillé --%3E%3Cpath d='M122 122c0-10 8-18 18-18h14c9 0 16 7 16 16v12c0 8-6 14-14 14h-20c-8 0-14-6-14-14v-10zm6 26h28v10c0 3-2 5-5 5h-18c-3 0-5-2-5-5v-10z'/%3E%3C/svg%3E"),
+                linear-gradient(135deg, #e0f2fe 0%, #f1f5f9 100%);
+        }
+    </style>
+</head>
+
+{# Corps de page : colonne flex sur toute la hauteur de l'écran, pour coller le pied de page en bas #}
+<body class="min-h-screen flex flex-col bg-sport-pattern text-slate-800">
+    {# ---------- Barre de navigation (commune à toutes les pages) ---------- #}
+    <nav class="bg-sky-400 text-white rounded-b-lg shadow-sm">
+        <ul class="max-w-6xl mx-auto flex items-center justify-between gap-6 p-4 font-medium">
+            {# Lien visible pour tout le monde #}
+            <li><a href="{% url 'accueil' %}" class="hover:underline font-bold">Accueil</a></li>
+            {# Menu différent selon que le visiteur est connecté ou non (décidé côté serveur) #}
+            {% if user.is_authenticated %}
+                {# Le lien d'accueil de l'espace dépend du rôle : coach ou adhérent #}
+                {% if user.role == "gestionnaire" %}
+                    <li><a href="{% url 'gestion' %}" class="hover:underline">Espace Coach</a></li>
+                {% else %}
+                    <li><a href="{% url 'Espace_membre' %}" class="hover:underline">Mon espace membre</a></li>
+                {% endif %}
+                {# Déconnexion : formulaire POST avec jeton CSRF, stylé comme un lien #}
+                <li>
+                    <form method="post" action="{% url 'deconnexion' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="hover:underline">Déconnexion</button>
+                    </form>
+                </li>
+            {# Visiteur anonyme : un seul lien, la page de connexion sert aussi à l'inscription #}
+            {% else %}
+                <li><a href="{% url 'connexion' %}" class="hover:underline">Connexion / Inscription</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    {# ---------- Contenu principal : flex-1 le fait occuper tout l'espace libre ---------- #}
+    <main class="flex-1 max-w-6xl w-full mx-auto p-6">
+        {# Messages de confirmation ou d'erreur posés par les vues. Affichés une seule fois, puis supprimés #}
+        {% if messages %}
+            {% for message in messages %}
+                {# La couleur dépend du tag du message : error en rouge, warning en orange, tout le reste (success, info) en vert #}
+                <div class="mb-4 p-4 rounded-lg border text-sm font-medium {% if 'error' in message.tags %}bg-red-50 border-red-200 text-red-700{% elif 'warning' in message.tags %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-emerald-50 border-emerald-200 text-emerald-700{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        {# Emplacement où chaque page enfant insère son contenu #}
+        {% block content %}
+        {% endblock %}
+    </main>
+    {# ---------- Pied de page : poussé en bas par le flex-1 du main ---------- #}
+    <footer class="text-center text-sm text-slate-500 py-4 border-t border-sky-200/80 bg-white/90">
+        <p>AssoSportive02</p>
+    </footer>
+</body>
+
+</html>

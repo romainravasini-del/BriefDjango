@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% comment %}
+==============================================================================
+espace_membre.html : espace personnel après connexion (route 'Espace_membre')
+==============================================================================
+
+RÔLE DE LA PAGE
+  Une seule page, deux affichages selon le rôle de l'utilisateur connecté :
+    - gestionnaire (coach) : statistiques et graphique des inscriptions, filtre,
+      puis trois colonnes (séances du jour, à venir, échues) avec les boutons
+      de changement d'état.
+    - adhérent : recherche de séances, colonne "Mes inscriptions" (avec
+      annulation) et colonne "Séances disponibles" (avec inscription).
+  Le choix se fait dans le gabarit par {% if user.role == "gestionnaire" %}.
+  ATTENTION : ce test ne fait que MASQUER l'autre affichage. La sécurité réelle
+  (qui a le droit de modifier quoi) doit être vérifiée dans les vues.
+
+VARIABLES FOURNIES PAR LES VUES (contexte)
+  user                        Utilisateur connecté (disponible partout).
+  request                     Requête en cours (request.GET = paramètres de l'URL).
+  Côté coach :
+    stats_etats               Dictionnaire {état: nombre d'inscriptions}.
+    activites                 Liste des activités (menu déroulant du filtre).
+    inscriptions_jour         Inscriptions des séances du jour.
+    inscriptions_avenir       Inscriptions des séances à venir.
+    inscriptions_echues       Inscriptions des séances passées (archives).
+  Côté adhérent :
+    activites                 Idem (menu déroulant de la recherche).
+    inscriptions              Inscriptions de l'adhérent.
+    seances                   Séances proposées (filtrées par la recherche).
+    seance.places_restantes   Places encore libres, calculées par le modèle
+                              ou la vue.
+
+BALISES ET FILTRES DJANGO UTILISÉS
+  {% extends %} / {% load static %} / {% block content %}
+                              Héritage du gabarit base.html ; seul le bloc
+                              est injecté. Hors d'un bloc, tout est ignoré.
+  {% if %} / {% elif %} / {% else %} / {% endif %}
+                              Affichage conditionnel, évalué côté serveur.
+  {% for x in liste %} ... {% empty %} ... {% endfor %}
+                              Boucle ; la partie {% empty %} s'affiche quand la
+                              liste est vide (message "aucune séance").
+  {% url 'nom' arg %}         Adresse construite depuis le NOM de la route
+                              (urls.py) avec ses paramètres (ex. l'id).
+  {% csrf_token %}            Obligatoire dans tout formulaire POST (protection
+                              contre les requêtes forgées).
+  {{ objet.get_etat_display }}  Libellé lisible d'un champ à "choices"
+                              (ex. "liste_attente" devient "Liste d'attente").
+  {{ x|default:0 }}           Affiche 0 si la valeur est vide ou absente.
+  {{ x|stringformat:"s" }}    Convertit en texte, pour comparer un id (nombre) à
+                              request.GET.activite (toujours du texte).
+  request.resolver_match.url_name
+                              Nom de la route de la page actuelle.
+
+FORMULAIRES
+  method="get"   Filtres et recherche : les choix passent dans l'URL
+                 (?activite=2&date_debut=...). Page partageable, aucune
+                 modification en base.
+  method="post"  Toute action qui MODIFIE des données (annuler, s'inscrire,
+                 changer d'état, se déconnecter). Jamais en GET.
+  input hidden   Valeur envoyée sans être affichée (ex. le nouvel état).
+                 Elle peut être modifiée par un utilisateur malveillant :
+                 la vue doit donc revérifier chaque transition.
+
+GRAPHIQUE
+  Chart.js (bibliothèque JavaScript chargée depuis un CDN) dessine un graphique
+  en anneau dans la balise <canvas>. Les nombres viennent de Django, injectés
+  dans le script.
+
+CLASSES TAILWIND UTILISÉES
+  Chaque classe applique UNE règle CSS ; on les combine dans l'attribut class.
+
+  Rappels d'échelle :
+    - Espacements : 1 unité = 0,25 rem (4 = 16 px, 8 = 32 px).
+    - Préfixes responsive (mobile d'abord) : sans préfixe = partout,
+      "md:" = dès 768 px, "lg:" = dès 1024 px.
+    - "hover:" = au survol ; "focus:" = quand le champ est sélectionné.
+    - Couleurs : famille (sky, amber, emerald, red, rose, slate...) + intensité
+      (50 très clair ... 900 très foncé). "/95" ou "/80" = opacité en %.
+    - Valeurs entre crochets, ex. max-h-[32rem] : valeur personnalisée.
+
+  Typographie
+    text-5xl / 2xl / lg / sm / xs   Taille du texte, de très grand à petit.
+    font-bold / semibold           Graisse du texte.
+    uppercase                      Texte en majuscules.
+    text-center                    Texte centré.
+    text-<couleur>-<n>             Couleur du texte.
+
+  Mise en page
+    max-w-6xl / max-w-md           Largeur maximale du bloc.
+    max-h-[32rem] + overflow-y-auto  Hauteur limitée (512 px) avec défilement
+                                   vertical quand le contenu dépasse.
+    mx-auto                        Bloc centré horizontalement.
+    w-full                         Largeur à 100 % du parent.
+    block                          Le label passe au-dessus du champ.
+    flex / flex-wrap               Éléments alignés sur une ligne (wrap : retour
+                                   à la ligne si pas de place).
+    justify-between                Éléments répartis aux extrémités.
+    items-start / items-end        Alignement vertical en haut / en bas.
+    shrink-0                       Empêche le badge de se rétrécir.
+    flex-1                         L'élément prend la place restante.
+
+  Grille
+    grid, grid-cols-1/2/3/5        Nombre de colonnes (avec préfixes md:/lg:).
+    md:grid-cols-[1fr_1fr_auto]    Colonnes personnalisées : 1fr = part égale de
+                                   l'espace libre, auto = largeur du contenu.
+    gap-1.5 / 2 / 4 / 6 / 10       Espace entre éléments.
+    space-y-3 / space-y-4          Espace vertical entre enfants empilés.
+
+  Espacements
+    p-/px-/py-                     Padding interne (tous côtés / horizontal /
+                                   vertical).
+    m-/mt-/mb-                     Marges extérieures (haut / bas).
+
+  Apparence
+    bg-<couleur>-<n>               Fond. Convention des états dans cette page :
+                                   sky = inscrit, amber = liste d'attente,
+                                   emerald = présent, red = absent,
+                                   slate = annulé.
+    border / border-<couleur>      Bordure fine de 1 px.
+    rounded / lg / xl / full       Coins arrondis (full = pilule ou cercle).
+    shadow-sm / shadow-md          Ombre portée légère / moyenne.
+    opacity-90                     Légère transparence (effet "archive").
+    transition                     Animation douce des changements au survol.
+    focus:outline-none focus:ring-2 focus:ring-sky-400
+                                   Retire le contour par défaut d'un champ et le
+                                   remplace par un halo bleu quand il est actif.
+{% endcomment %}
+
+{% block content %}
+
+<h1 class="text-5xl font-bold text-slate-800 text-center">Bienvenue à l'Association Multisports de l'Aisne</h1>
+{# Conteneur principal : large (max-w-6xl) pour laisser de la place aux colonnes #}
+<div class="max-w-6xl mx-auto py-10 px-6">
+    <p class="text-slate-500 text-center mt-2 mb-8">Bienvenue {{ user }}</p>
+    {# Carte principale qui regroupe tout le contenu de la page #}
+    <section class="bg-white/95 p-8 rounded-xl shadow-md border border-sky-200/80">
+
+        <p class="text-slate-500 text-center mb-8">
+            Bienvenue sur votre espace membre. Vous pouvez ici gérer vos activités sportives et vos informations personnelles.
+        </p>
+
+        {# ===================== AFFICHAGE COACH (gestionnaire) ===================== #}
+        {# Ce test masque seulement l'affichage : la vue doit aussi refuser les actions d'un non-coach #}
+        {% if user.role == "gestionnaire" %}
+
+        <h2 class="text-2xl font-bold text-center mb-2">Espace Coach</h2>
+        <p class="text-slate-500 text-center mb-8">Gérez les inscriptions et faites l'appel de vos adhérents (des plus récentes aux plus anciennes)</p>
+        {# Cartes de statistiques : une par état, 2 colonnes sur mobile et 5 dès 768 px #}
+        {# Code couleur identique dans toute la page : sky = inscrit, amber = attente, emerald = présent, red = absent, slate = annulé #}
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-sky-700">{{ stats_etats.inscrit }}</p>
+                <p class="text-xs font-semibold text-sky-600 uppercase mt-1">Inscrits</p>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-amber-700">{{ stats_etats.liste_attente }}</p>
+                <p class="text-xs font-semibold text-amber-600 uppercase mt-1">En liste d'attente</p>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-emerald-700">{{ stats_etats.present }}</p>
+                <p class="text-xs font-semibold text-emerald-600 uppercase mt-1">Présent</p>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-red-700">{{ stats_etats.absent }}</p>
+                <p class="text-xs font-semibold text-red-600 uppercase mt-1">Absent</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-slate-700">{{ stats_etats.annule }}</p>
+                <p class="text-xs font-semibold text-slate-600 uppercase mt-1">Annulé</p>
+            </div>
+        </div>
+
+        {# Zone du graphique : le <canvas> est le support sur lequel Chart.js dessine #}
+        <div class="bg-white border border-slate-200 rounded-xl p-6 mb-8 max-w-md mx-auto">
+            <canvas id="graphiqueEtats"></canvas>
+        </div>
+
+        {# Chart.js chargé depuis un CDN (bibliothèque externe, nécessite une connexion internet) #}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            {# Création du graphique : on cible le <canvas> par son id #}
+            new Chart(document.getElementById("graphiqueEtats"), {
+                type: "doughnut",
+                data: {
+                    labels: ["Inscrits", "Liste d'attente", "Présents", "Absents", "Annulés"],
+                    datasets: [{
+                        data: [
+                            {{ stats_etats.inscrit|default:0 }},
+                            {{ stats_etats.liste_attente|default:0 }},
+                            {{ stats_etats.present|default:0 }},
+                            {{ stats_etats.absent|default:0 }},
+                            {{ stats_etats.annule|default:0 }}
+                        ],
+                        backgroundColor: ["#38bdf8", "#fbbf24", "#34d399", "#f87171", "#94a3b8"]
+                    }]
+                },
+                options: {
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                    return ` ${context.label} : ${pct} %`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+
+        {# Filtre du coach (méthode GET). Les noms de champs (activite_coach, date_coach) sont distincts de ceux de l'adhérent pour ne pas se mélanger #}
+        {# Grille : 3 colonnes dès 768 px, les deux champs partagent la place et la dernière s'adapte aux boutons #}
+        <form method="get" class="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end mb-8 bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div>
+                <label for="activite_coach" class="block text-sm font-semibold text-slate-700 mb-1">Activité</label>
+                <select name="activite_coach" id="activite_coach"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <option value="">Toutes</option>
+                    {% for activite in activites %}
+                    {# "selected" conserve le choix après la recherche. stringformat:"s" : on compare du texte avec du texte #}
+                    <option value="{{ activite.id }}"
+                        {% if request.GET.activite_coach == activite.id|stringformat:"s" %}selected{% endif %}>
+                        {{ activite.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="date_coach" class="block text-sm font-semibold text-slate-700 mb-1">Date</label>
+                {# value= réaffiche la date saisie, sinon le champ se viderait à chaque filtre #}
+                <input type="date" name="date_coach" id="date_coach" value="{{ request.GET.date_coach }}"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit"
+                    class="bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    Filtrer
+                </button>
+                {# href="?" recharge la page sans aucun paramètre : réinitialise le filtre #}
+                <a href="?" class="py-2 px-4 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition">
+                    Réinitialiser
+                </a>
+            </div>
+        </form>
+
+        {# Trois colonnes de listes (empilées sur mobile, côte à côte dès 1024 px) #}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {# ---------- Colonne 1 : séances du jour (accès rapide à l'appel) ---------- #}
+            <div class="bg-white border border-sky-200 rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-bold text-sky-700 mb-3">Séances du jour</h3>
+                {# Liste défilante : hauteur limitée à 32 rem, défilement vertical au-delà #}
+                <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                    {% for inscription in inscriptions_jour %}
+                    <div class="border border-slate-200 rounded-lg p-3 text-sm bg-slate-50/60">
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <p class="font-semibold text-slate-800">{{ inscription.utilisateur }}</p>
+                            {# Badge d'état : la couleur dépend de l'état (même code couleur que les statistiques). Cette chaîne if/elif est répétée dans les 3 colonnes #}
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0
+                                {% if inscription.etat == 'inscrit' %}bg-sky-100 text-sky-700
+                                {% elif inscription.etat == 'liste_attente' %}bg-amber-100 text-amber-700
+                                {% elif inscription.etat == 'present' %}bg-emerald-100 text-emerald-700
+                                {% elif inscription.etat == 'absent' %}bg-red-100 text-red-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ inscription.get_etat_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-600 text-xs mb-2">{{ inscription.seance.activite }} · {{ inscription.seance.heure_debut }} ({{ inscription.seance.lieu }})</p>
+                        {# Les boutons affichés dépendent de l'état courant : seules les transitions prévues par la fiche sont proposées #}
+                        {# Chaque bouton est un petit formulaire POST : un GET ne doit jamais modifier la base #}
+                        {% if inscription.etat == "inscrit" %}
+                            <div class="flex flex-wrap gap-1.5">
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    {# "next" : nom de la page à rediriger après l'action. La vue doit le valider (ne jamais rediriger vers une valeur non contrôlée) #}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    {# Champ caché : modifiable par un utilisateur malveillant, donc la vue doit revérifier que la transition inscrit -> present est autorisée (et que la séance a bien eu lieu) #}
+                                    <input type="hidden" name="etat" value="present">
+                                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Présent</button>
+                                </form>
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    <input type="hidden" name="etat" value="absent">
+                                    <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Absent</button>
+                                </form>
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    <input type="hidden" name="etat" value="annule">
+                                    <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Annuler</button>
+                                </form>
+                            </div>
+                        {# Une inscription en liste d'attente ne peut qu'être annulée depuis cette colonne #}
+                        {% elif inscription.etat == "liste_attente" %}
+                            <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                <input type="hidden" name="etat" value="annule">
+                                <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Annuler</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {# Affiché seulement si la liste est vide #}
+                    {% empty %}
+                    <p class="text-slate-500 text-sm">Aucune séance aujourd'hui.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# ---------- Colonne 2 : séances à venir ---------- #}
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 mb-3">Séances à venir</h3>
+                <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                    {% for inscription in inscriptions_avenir %}
+                    <div class="border border-slate-200 rounded-lg p-3 text-sm">
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <p class="font-semibold text-slate-800">{{ inscription.utilisateur }}</p>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0
+                                {% if inscription.etat == 'inscrit' %}bg-sky-100 text-sky-700
+                                {% elif inscription.etat == 'liste_attente' %}bg-amber-100 text-amber-700
+                                {% elif inscription.etat == 'present' %}bg-emerald-100 text-emerald-700
+                                {% elif inscription.etat == 'absent' %}bg-red-100 text-red-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ inscription.get_etat_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-600 text-xs mb-2">{{ inscription.seance.activite }} · {{ inscription.seance.date }} à {{ inscription.seance.heure_debut }}</p>
+                        {# Séance pas encore passée : seule l'annulation est proposée (pas d'appel présent/absent avant la séance, règle de la fiche) #}
+                        {% if inscription.etat == "inscrit" or inscription.etat == "liste_attente" %}
+                            <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                <input type="hidden" name="etat" value="annule">
+                                <button type="submit" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Annuler</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-slate-500 text-sm">Aucune séance à venir.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# ---------- Colonne 3 : séances échues (archives) ---------- #}
+            {# Fond grisé et opacité réduite : repère visuel pour ce qui est passé #}
+            <div class="bg-slate-100/80 border border-slate-200 rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-600 mb-3">Séances échues (Archives)</h3>
+                <div class="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                    {% for inscription in inscriptions_echues %}
+                    <div class="border border-slate-200 bg-white rounded-lg p-3 text-sm opacity-90">
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <p class="font-semibold text-slate-700">{{ inscription.utilisateur }}</p>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0
+                                {% if inscription.etat == 'inscrit' %}bg-sky-100 text-sky-700
+                                {% elif inscription.etat == 'liste_attente' %}bg-amber-100 text-amber-700
+                                {% elif inscription.etat == 'present' %}bg-emerald-100 text-emerald-700
+                                {% elif inscription.etat == 'absent' %}bg-red-100 text-red-700
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ inscription.get_etat_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-500 text-xs mb-2">{{ inscription.seance.activite }} · {{ inscription.seance.date }} à {{ inscription.seance.heure_debut }}</p>
+                        {# Séance passée : le coach peut encore faire l'appel (présent/absent) pour les inscrits, mais plus annuler #}
+                        {% if inscription.etat == "inscrit" %}
+                            <div class="flex flex-wrap gap-1.5">
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    <input type="hidden" name="etat" value="present">
+                                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Présent</button>
+                                </form>
+                                <form method="post" action="{% url 'gestion_changer_etat' inscription.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.resolver_match.url_name }}">
+                                    <input type="hidden" name="etat" value="absent">
+                                    <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded text-xs font-semibold">Absent</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-slate-500 text-sm">Aucune séance échue.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {# ===================== AFFICHAGE ADHÉRENT ===================== #}
+        {% else %}
+
+        <h2 class="text-2xl font-bold text-center mb-2">Espace Adhérent</h2>
+        <p class="text-slate-500 text-center mb-8">Consultez vos cours et vos activités sportives</p>
+
+        {# Recherche de séances (méthode GET : les filtres passent dans l'URL). Les 3 champs sont facultatifs et se cumulent #}
+        {# Colonnes : 3 champs de largeur égale + une colonne "auto" pour les boutons, afin qu'ils ne dépassent pas du cadre #}
+        <form method="get" class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end mb-10 bg-slate-50 border border-slate-200 rounded-lg p-4">
+
+            <div>
+                <label for="activite" class="block text-sm font-semibold text-slate-700 mb-1">Activité</label>
+                <select name="activite" id="activite"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <option value="">Toutes</option>
+                    {% for activite in activites %}
+                    {# "selected" conserve le choix après la recherche #}
+                    <option value="{{ activite.id }}"
+                        {% if request.GET.activite == activite.id|stringformat:"s" %}selected{% endif %}>
+                        {{ activite.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="date_debut" class="block text-sm font-semibold text-slate-700 mb-1">Date</label>
+                <input type="date" name="date_debut" id="date_debut" value="{{ request.GET.date_debut }}"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
+            </div>
+
+            <div>
+                <label for="heure_debut" class="block text-sm font-semibold text-slate-700 mb-1">Heure de début</label>
+                {# type="time" : le navigateur envoie l'heure au format HH:MM #}
+                <input type="time" name="heure_debut" id="heure_debut" value="{{ request.GET.heure_debut }}"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400">
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit"
+                    class="flex-1 bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    Rechercher
+                </button>
+                <a href="?" class="py-2 px-4 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition">
+                    Réinitialiser
+                </a>
+            </div>
+        </form>
+
+        {# Deux colonnes dès 1024 px (empilées en dessous) : inscriptions à gauche, séances à droite #}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+            {# ---------- Colonne gauche : Mes inscriptions ---------- #}
+            <section>
+                <h3 class="text-lg font-bold text-slate-800">Mes inscriptions</h3>
+                <p class="text-slate-500 mb-4">Gérez, annulez ou avertissez de vos absences.</p>
+
+                {# Liste défilante : hauteur limitée, défilement vertical au-delà #}
+                <div class="space-y-4 max-h-[32rem] overflow-y-auto pr-2">
+                    {% for inscription in inscriptions %}
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="font-semibold text-slate-800">{{ inscription.seance.activite }}</p>
+                            {# get_etat_display : libellé lisible de l'état (et non la valeur technique stockée en base) #}
+                            <span class="text-sm bg-sky-100 text-sky-700 px-2 py-1 rounded-full">
+                                {{ inscription.get_etat_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-600">{{ inscription.seance.date }} à {{ inscription.seance.heure_debut }}</p>
+
+                        {# Le bouton Annuler n'est proposé que pour les états annulables (inscrit ou liste d'attente) #}
+                        {# La vue doit quand même vérifier que l'inscription appartient bien à l'adhérent connecté et que la séance n'a pas eu lieu #}
+                        {% if inscription.etat == "inscrit" or inscription.etat == "liste_attente" %}
+                            <form method="post" action="{% url 'annuler_inscription' inscription.id %}" class="mt-3">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    class="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Annuler
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-slate-500">Vous n'avez aucune inscription.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {# ---------- Colonne droite : Séances disponibles ---------- #}
+            <section>
+                <h3 class="text-lg font-bold text-slate-800">Séances disponibles</h3>
+                <p class="text-slate-500 mb-4">Consultez les séances proposées par les coaches.</p>
+
+                <div class="space-y-4 max-h-[32rem] overflow-y-auto pr-2">
+                    {% for seance in seances %}
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="font-semibold text-slate-800">{{ seance.activite }}</p>
+                            <span class="text-sm bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                                {{ seance.get_niveau_display }}
+                            </span>
+                        </div>
+                        <p class="text-slate-600">{{ seance.date }} à {{ seance.heure_debut }}</p>
+                        <p class="text-slate-600">{{ seance.lieu }}</p>
+                        <p class="text-slate-600">Places totales : {{ seance.places }}</p>
+                        {# places_restantes n'est pas un champ de la base : valeur calculée (propriété du modèle ou ajoutée par la vue) #}
+                        <p class="text-green-600 font-semibold">Places restantes : {{ seance.places_restantes }}</p>
+                        <p class="text-slate-600">Coach : {{ seance.coach }}</p>
+                        <p class="text-slate-500 text-sm mt-2">{{ seance.description }}</p>
+
+                        {# Le bouton est affiché pour toutes les séances : les règles métier (séance passée, certificat, séance complète -> liste d'attente) sont appliquées par la vue, jamais ici #}
+                        <form method="post" action="{% url 'inscrire_seance' seance.id %}" class="mt-3">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                S'inscrire
+                            </button>
+                        </form>
+
+                    </div>
+                    {% empty %}
+                    <p class="text-slate-500">Aucune séance disponible pour le moment.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        {% endif %}
+
+        {# Déconnexion en POST : Django n'accepte plus le GET pour cette action #}
+        <form method="post" action="{% url 'deconnexion' %}">
+            {% csrf_token %}
+            <button type="submit"
+                class="mt-8 w-full bg-sky-400 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg transition">
+                Se déconnecter
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}
